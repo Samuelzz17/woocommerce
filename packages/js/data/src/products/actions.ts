@@ -9,6 +9,7 @@ import { DispatchFromMap } from '@automattic/data-stores';
  */
 import TYPES from './action-types';
 import {
+	DeleteProductType,
 	MutableProperties,
 	PartialProduct,
 	Product,
@@ -116,6 +117,50 @@ export function* createProduct( data: Pick< Product, MutableProperties > ) {
 	}
 }
 
+export function deleteProductSuccess(
+	id: number,
+	product: PartialProduct,
+	force: boolean
+) {
+	return {
+		type: TYPES.DELETE_PRODUCT_SUCCESS as const,
+		id,
+		product,
+		force,
+	};
+}
+
+export function deleteProductError( id: number, error: unknown ) {
+	return {
+		type: TYPES.DELETE_PRODUCT_ERROR as const,
+		id,
+		error,
+	};
+}
+
+export function* removeProduct( id: number, { force }: DeleteProductType ) {
+	try {
+		const url = force
+			? `${ WC_PRODUCT_NAMESPACE }/${ id }?force=true`
+			: `${ WC_PRODUCT_NAMESPACE }/${ id }`;
+
+		const product: Product = yield apiFetch( {
+			path: url,
+			method: 'DELETE',
+		} );
+
+		if ( product ) {
+			yield deleteProductSuccess( id, product, force );
+			return product;
+		}
+
+		throw new Error();
+	} catch ( error ) {
+		yield deleteProductError( id, error );
+		throw new Error();
+	}
+}
+
 export type Actions = ReturnType<
 	| typeof createProductError
 	| typeof createProductSuccess
@@ -125,6 +170,8 @@ export type Actions = ReturnType<
 	| typeof getProductsError
 	| typeof getProductsTotalCountSuccess
 	| typeof getProductsTotalCountError
+	| typeof deleteProductSuccess
+	| typeof deleteProductError
 >;
 
 export type ActionDispatchers = DispatchFromMap< {
